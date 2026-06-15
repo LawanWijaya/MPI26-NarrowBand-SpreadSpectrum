@@ -4,7 +4,8 @@ RTXcode.m
 This code generates a series of plots showing how the size of the faithful
 set varies with different variables, hopefully with curve fits.
 
-This code uses the Communication Toolbox and the Curve Fitting Toolbox.
+This code uses the Signal Processing Toolbox, 
+Communication Toolbox and the Curve Fitting Toolbox.
 
 Last modified by David A. Edwards on 6/15/26.
 
@@ -37,36 +38,40 @@ for ffactor = 1:2
 
     fmax = 512*ffactor
 
-for omegaw = 1:omegawmax
+    for omegaw = 1:omegawmax
 
-    for i = 1:n
-        % See if this can be vectorized!
-        % Compute the best match for row i.
-        bestvec(i) = bestmatch(i,n,omegaw,fmax);
+        h = n*fwht(eye(n)); % Walsh ordering
+        
+        for i = 1:n
+            % See if this can be vectorized!
+            % Compute the best match for row i.
+            bestvec(i) = bestmatch(i,h,n,omegaw,fmax);
+        end
+
+        % Echo value
+        if mod(omegaw,8)==0
+            fprintf('omegaw = %d\n', omegaw);
+        end
+
+        % Compute the faithful set.
+        faithful = (bestvec == (1:length(bestvec))');
+        % Compute the size of the faithful set, and store for later plotting.
+        % We want to do an exponential fit, so we take the log.
+        plotset(omegaw,ffactor)=log(sum(faithful));
+
     end
-
-    % Echo value
-    if mod(omegaw,8)==0 
-        fprintf('omegaw = %d\n', omegaw);
-    end
-
-    % Compute the faithful set.
-    faithful = (bestvec == (1:length(bestvec))');
-    % Compute the size of the faithful set, and store for later plotting.
-    % We want to do an exponential fit, so we take the log.
-    plotset(omegaw,ffactor)=log(sum(faithful));
 
 end
 
-end
-% 
+%% Plotting
+%
 % % Then plot the result:
 % % Set LaTeX interpreters and default font size
 set(groot, 'defaultTextInterpreter', 'latex', ...
-           'defaultAxesTickLabelInterpreter', 'latex', ...
-           'defaultLegendInterpreter', 'latex', ...
-           'defaultAxesFontSize', 14, ...
-           'defaultTextFontSize', 14);
+    'defaultAxesTickLabelInterpreter', 'latex', ...
+    'defaultLegendInterpreter', 'latex', ...
+    'defaultAxesFontSize', 14, ...
+    'defaultTextFontSize', 14);
 
 % Plot using omegaw on x-axis
 figure;
@@ -102,7 +107,9 @@ for col = 1:2
     hfit(col) = plot(xfit, yfit, '--', 'Color', colorsFit(col,:), 'LineWidth', 1.5);
 
     % Build LaTeX equation and R^2 string
-    m = cfun.m; b = cfun.b; R2 = gof.rsquare;
+    m = cfun.m;
+    b = cfun.b;
+    R2 = gof.rsquare;
     eqTexts{col} = sprintf('$\\log|F|(\\omega_{\\rm w}) = %.3g\\,\\omega_{\\rm w} %+.3g,\\; R^2 = %.4f$', m, b, R2);
 end
 
@@ -122,9 +129,11 @@ xlim([1 omegawmax]);
 ylim([0 log(n)]);
 grid on;
 legend([h1 h2 hfit(1) hfit(2)], {'$\omega_a = 512$', '$\omega_a = 1024$', 'Exp fit (512)', 'Exp fit (1024)'}, ...
-       'Location', 'best');
+    'Location', 'best');
 
 hold off;
+
+%% Second plot
 
 % Second plot: F vs bandwidth.
 
@@ -132,7 +141,7 @@ omegaw = 10;
 n = 512;
 count = 1;
 for fmax = 512:8:1024 % Go from 512 to 1024 by 8s
-   
+
     for i = 1:n
         % See if this can be vectorized!
         % Compute the best match for row i.
@@ -140,7 +149,7 @@ for fmax = 512:8:1024 % Go from 512 to 1024 by 8s
     end
 
     % Echo value
-    if mod(fmax,64)==0 
+    if mod(fmax,64)==0
         fprintf('fmax = %d\n', fmax);
     end
 
@@ -154,10 +163,10 @@ end
 
 % Then plot the result:
 set(groot, 'defaultTextInterpreter', 'latex', ...
-           'defaultAxesTickLabelInterpreter', 'latex', ...
-           'defaultLegendInterpreter', 'latex', ...
-           'defaultAxesFontSize', 14, ...
-           'defaultTextFontSize', 14);
+    'defaultAxesTickLabelInterpreter', 'latex', ...
+    'defaultLegendInterpreter', 'latex', ...
+    'defaultAxesFontSize', 14, ...
+    'defaultTextFontSize', 14);
 
 % Then plot the result:
 figure;
@@ -213,8 +222,8 @@ grid on;
 hold off;
 
 
-
-function f = bestmatch(i,n,omegaw,fmax)
+%%
+function f = bestmatch(i,h,n,omegaw,fmax)
 % This function computes the index of the closest transmitted encoding to the received
 % encoding i.
 
@@ -230,54 +239,61 @@ function f = bestmatch(i,n,omegaw,fmax)
 % Output variables:
 % bestmatch: index of encoding which best matches the received state
 
+% Internal variables:
+% flag: 1 if using Matlab's converter; 2 if using Adam's
+
 flag = 1;
 
 % Internal variables:
 fs_sym = n*omegaw;                 % symbol/sample rate (Hz) - must be > 2*fmax_symbol? here choose >= 2*fmax/n/A
 fs_analog = fs_sym;              % analog sampling frequency (Hz), must satisfy fs_analog > 2*fmax
-h = hadamard(n); % Hadamard matrix
-x = h(i,:); % encoding to be transmitted.
+% Create the nxn Hadamard matrix in Walsh order
+
 
 % Upsample ratio p/q for resample: convert from fs_sym to fs_analog
 % p = fs_analog;
 % q = fs_sym;
 
+x = h(i,:);
+
 if flag==1
     % This is the converter provided by Copilot with Matlab.
-% Create analog (bandlimited) waveform by resampling (interpolation with antialias filter)
-% resample returns a sequence sampled at fs_analog
-analog = resample(x,fs_analog,fs_sym);    % anti-aliasing/interpolation filter applied
+    % Create analog (bandlimited) waveform by resampling (interpolation with antialias filter)
+    % resample returns a sequence sampled at fs_analog
+    analog = resample(x,fs_analog,fs_sym);    % anti-aliasing/interpolation filter applied
 
-% Time vectors
-t_sym = (0:n-1)/fs_sym;
-t_analog = (0:length(analog)-1)/fs_analog;
+    % Time vectors
+    t_sym = (0:n-1)/fs_sym;
+    t_analog = (0:length(analog)-1)/fs_analog;
 
-% Verify analog bandwidth (optional): design lowpass to enforce fmax if needed
-% Here resample's built-in filter already limits to nyquist of symbol rate, but to ensure fmax use filtfilt:
-Wn = fmax/(fs_analog/2);       % normalized cutoff for analog sampling
-if Wn < 1
-    [b,a] = butter(6, Wn);     % 6th-order Butterworth lowpass
-    analog = filtfilt(b,a,double(analog));
-end
+    % Verify analog bandwidth (optional): design lowpass to enforce fmax if needed
+    % Here resample's built-in filter already limits to nyquist of symbol rate, but to ensure fmax use filtfilt:
+    Wn = fmax/(fs_analog/2);       % normalized cutoff for analog sampling
+    if Wn < 1
+        [b,a] = butter(6, Wn);     % 6th-order Butterworth lowpass
+        analog = filtfilt(b,a,double(analog));
+    end
 
-% Recover digital by sampling analog at symbol instants (nearest indices)
-L = fs_analog / fs_sym;        % integer upsample factor (should be integer)
-if abs(L - round(L)) > 1e-10
-    error('fs_analog must be an integer multiple of fs_sym for simple downsampling. Use resample for arbitrary ratios.');
-end
-L = round(L);
-recovered_samples = analog(1:L:end);   % pick samples corresponding to symbol instants
+    % Recover digital by sampling analog at symbol instants (nearest indices)
+    L = fs_analog / fs_sym;        % integer upsample factor (should be integer)
+    if abs(L - round(L)) > 1e-10
+        error('fs_analog must be an integer multiple of fs_sym for simple downsampling. Use resample for arbitrary ratios.');
+    end
+    L = round(L);
+    recovered_samples = analog(1:L:end);   % pick samples corresponding to symbol instants
 
-% Decision device (hard decision to ±1)
-x_rec = sign(recovered_samples);
-x_rec(x_rec==0) = 1;           % tie-break if exact zero
+    % Decision device (hard decision to ±1)
+    x_rec = sign(recovered_samples);
+    x_rec(x_rec==0) = 1;           % tie-break if exact zero
 
 end
 
 if flag==2
     % Adam's method
-
+    x_rec = adam_faithful(x',fs_analog/omegaw^2);
 end
+
+% x_rec;
 
 % Now that we have computed x_rec, we find the encoding with minimum
 % distance from it.
@@ -303,18 +319,71 @@ end
 
 end
 
+function return_data = adam_faithful(inp_seq,cutoff)
+
+% choose code length
+code_length = length(inp_seq);
+
+% rudimentary discrete ADPCM (only at intervals)
+inp_con = [0;cumsum(inp_seq)];
+
+% fill in intervals
+m = 64;
+inp_con_fill = repelem(inp_con,m);
+M = length(inp_con_fill);
+
+% visualize cont input
+%inp_anal_fig = figure(1);
+%clf(inp_anal_fig);
+%inp_anal_ax = axes(inp_anal_fig);
+%plot(inp_anal_ax,1:M,inp_con_fill);
+%title(inp_anal_ax,'Input Analog');
+
+% Define frequencies and cutoff
+k = [0:M/2-1 -M/2:-1]';
+xi = 2*pi*k/code_length;
+
+% fft -> filter -> ifft
+Fhat = fft(inp_con_fill);
+mask = abs(xi) <= cutoff;
+Fhat_filt = Fhat .* mask;
+out_con_fill = real(ifft(Fhat_filt));
+
+% visualize cont output
+%out_anal_fig = figure(2);
+%clf(out_anal_fig);
+%out_anal_ax = axes(out_anal_fig);
+%plot(out_anal_ax,1:M,out_con_fill);
+%title(out_anal_ax,'Output Analog');
+
+% extract values at intervals
+out_cont_fill = out_con_fill(1:m:end);
+out_seq = 2*(diff(out_cont_fill) >= 0) - 1;
+
+return_data = out_seq;
+
+%inp_seq.'
+%out_seq.'
+
+%num_diff = sum(inp_seq ~= out_seq);
+
+%return_data = num_diff;
+
+end
+
 % % Plots: show a short segment for clarity
 % Lseg = min(100, n);
 % idx_sym = 1:Lseg;
 % idx_analog = 1:round(L*Lseg);
-% 
+%
 % figure;
+
 % subplot(3,1,1);
 % stem(t_sym(idx_sym), x(idx_sym), 'b', 'filled');
 % title('Original Digital Symbols (±1)');
 % xlabel('Time (s)'); ylabel('Amplitude');
 % xlim([t_sym(1) t_sym(Lseg)]); ylim([-1.5 1.5]); grid on;
-% 
+%
 % subplot(3,1,2);
 % plot(t_analog(1:idx_analog(end)), analog(1:idx_analog(end)), 'k-');
 % hold on;
@@ -322,7 +391,7 @@ end
 % title('Analog Waveform (bandlimited interpolation) and Original Symbols');
 % xlabel('Time (s)'); ylabel('Amplitude');
 % xlim([t_sym(1) t_sym(Lseg)]); ylim([-1.5 1.5]); legend('Analog','Symbols'); grid on;
-% 
+%
 % subplot(3,1,3);
 % stem(t_sym(idx_sym), x_rec(idx_sym), 'r', 'filled');
 % hold on;
