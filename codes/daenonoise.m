@@ -4,6 +4,8 @@ RTXcode.m
 This code generates a series of plots showing how the size of the faithful
 set varies with different variables, hopefully with curve fits.
 
+This is starting to put the noise in.
+
 This code uses the Signal Processing Toolbox, 
 Communication Toolbox and the Curve Fitting Toolbox.
 
@@ -34,27 +36,20 @@ plotset = zeros(omegawmax,2); % Plotting vector
 
 % First plot: F vs omegaw.
 
+snr = Inf;
+
 for ffactor = 1:2
 
     fmax = 512*ffactor
 
     for omegaw = 1:omegawmax
 
-        h = n*fwht(eye(n)); % Walsh ordering
-        
-        for i = 1:n
-            % See if this can be vectorized!
-            % Compute the best match for row i.
-            bestvec(i) = bestmatch(i,h,n,omegaw,fmax);
-        end
+        faithful = getfaithful(n,omegaw,fmax,snr);
 
-        % Echo value
-        if mod(omegaw,8)==0
-            fprintf('omegaw = %d\n', omegaw);
+        % For a particular value of omegaw, keep faithful for quoting
+        if omegaw==30
+            f30 = faithful;
         end
-
-        % Compute the faithful set.
-        faithful = (bestvec == (1:length(bestvec))');
         % Compute the size of the faithful set, and store for later plotting.
         % We want to do an exponential fit, so we take the log.
         plotset(omegaw,ffactor)=log(sum(faithful));
@@ -122,7 +117,7 @@ text(30,3, eqTexts{1}, 'Interpreter', 'latex', 'FontSize', 12, 'BackgroundColor'
 text(25.5,5.2, eqTexts{2}, 'Interpreter', 'latex', 'FontSize', 12, 'BackgroundColor', 'none', 'Color', colorsFit(2,:));
 
 % Labels, limits, legend
-title('$\log |F|$ {\it vs}.\ word rate');
+title('$\log |F(%.3g)|$ {\it vs}.\ word rate',snr);
 xlabel('Word rate $\omega_{\rm w}$ (Hz)');
 ylabel('$\log |F|$');
 xlim([1 omegawmax]);
@@ -142,31 +137,18 @@ n = 512;
 count = 1;
 for fmax = 512:8:1024 % Go from 512 to 1024 by 8s
 
-    for i = 1:n
-        % See if this can be vectorized!
-        % Compute the best match for row i.
-        bestvec(i) = bestmatch(i,n,omegaw,fmax);
-    end
+    faithful = getfaithful(n,omegaw,fmax,snr);
 
     % Echo value
     if mod(fmax,64)==0
         fprintf('fmax = %d\n', fmax);
     end
 
-    % Compute the faithful set.
-    faithful = (bestvec == (1:length(bestvec))');
     % Compute the size of the faithful set, and store for later plotting:
     plotset(count,:)=[fmax,sum(faithful)];
     count = count+1;
 
 end
-
-% Then plot the result:
-set(groot, 'defaultTextInterpreter', 'latex', ...
-    'defaultAxesTickLabelInterpreter', 'latex', ...
-    'defaultLegendInterpreter', 'latex', ...
-    'defaultAxesFontSize', 14, ...
-    'defaultTextFontSize', 14);
 
 % Then plot the result:
 figure;
@@ -207,8 +189,12 @@ xpos = xr(1) + 0.05*(xr(2)-xr(1));
 ypos = yr(2) - 0.08*(yr(2)-yr(1));
 text(xpos, ypos, eqStr, 'Interpreter', 'latex', 'FontSize', 12, 'BackgroundColor', 'none', 'Color', [0.2 0.6 0.2]);
 
-
-title('$|F|$ vs. bandwidth, $\omega_{\rm w}=10$ Hz, $n=512$');
+if snr == Inf
+    fstring = "$|F(\infty)|$";
+else
+    fstring = sprintf('$|F(%.3g)|$',snr);
+end
+tstring = append(fstring,' vs. bandwidth, $\omega_{\rm w}=10$ Hz, $n=512$');
 xlabel('Bandwidth $\omega_{\rm a}$ (Hz)');
 ylabel('$|F|$');
 xlim([512 1024]);
@@ -223,7 +209,7 @@ hold off;
 
 
 %%
-function f = bestmatch(i,h,n,omegaw,fmax)
+function f = bestmatch(i,h,n,omegaw,fmax,snr)
 % This function computes the index of the closest transmitted encoding to the received
 % encoding i.
 
@@ -257,40 +243,13 @@ fs_analog = fs_sym;              % analog sampling frequency (Hz), must satisfy 
 x = h(i,:);
 
 if flag==1
-    % This is the converter provided by Copilot with Matlab.
-    % Create analog (bandlimited) waveform by resampling (interpolation with antialias filter)
-    % resample returns a sequence sampled at fs_analog
-    analog = resample(x,fs_analog,fs_sym);    % anti-aliasing/interpolation filter applied
-
-    % Time vectors
-    t_sym = (0:n-1)/fs_sym;
-    t_analog = (0:length(analog)-1)/fs_analog;
-
-    % Verify analog bandwidth (optional): design lowpass to enforce fmax if needed
-    % Here resample's built-in filter already limits to nyquist of symbol rate, but to ensure fmax use filtfilt:
-    Wn = fmax/(fs_analog/2);       % normalized cutoff for analog sampling
-    if Wn < 1
-        [b,a] = butter(6, Wn);     % 6th-order Butterworth lowpass
-        analog = filtfilt(b,a,double(analog));
-    end
-
-    % Recover digital by sampling analog at symbol instants (nearest indices)
-    L = fs_analog / fs_sym;        % integer upsample factor (should be integer)
-    if abs(L - round(L)) > 1e-10
-        error('fs_analog must be an integer multiple of fs_sym for simple downsampling. Use resample for arbitrary ratios.');
-    end
-    L = round(L);
-    recovered_samples = analog(1:L:end);   % pick samples corresponding to symbol instants
-
-    % Decision device (hard decision to ±1)
-    x_rec = sign(recovered_samples);
-    x_rec(x_rec==0) = 1;           % tie-break if exact zero
-
+    % Copilot method
+    x_rec = dae_DAD(x,fs_analog,fs_sym,n,fmax,snr);
 end
 
 if flag==2
     % Adam's method
-    x_rec = adam_faithful(x',fs_analog/omegaw^2);
+    x_rec = adam_DAD(x',fs_analog/omegaw^2);
 end
 
 % x_rec;
@@ -319,7 +278,7 @@ end
 
 end
 
-function return_data = adam_faithful(inp_seq,cutoff)
+function return_data = adam_DAD(inp_seq,cutoff)
 
 % choose code length
 code_length = length(inp_seq);
@@ -368,6 +327,66 @@ return_data = out_seq;
 %num_diff = sum(inp_seq ~= out_seq);
 
 %return_data = num_diff;
+
+end
+
+function x_rec = dae_DAD(x,fs_analog,fs_sym,n,fmax,snr)
+
+% This is the converter provided by Copilot with Matlab.
+% Create analog (bandlimited) waveform by resampling (interpolation with antialias filter)
+% resample returns a sequence sampled at fs_analog
+analog = resample(x,fs_analog,fs_sym);    % anti-aliasing/interpolation filter applied
+
+% Time vectors
+t_sym = (0:n-1)/fs_sym;
+t_analog = (0:length(analog)-1)/fs_analog;
+
+% Verify analog bandwidth (optional): design lowpass to enforce fmax if needed
+% Here resample's built-in filter already limits to nyquist of symbol rate, but to ensure fmax use filtfilt:
+Wn = fmax/(fs_analog/2);       % normalized cutoff for analog sampling
+if Wn < 1
+    [b,a] = butter(6, Wn);     % 6th-order Butterworth lowpass
+    analog = filtfilt(b,a,double(analog));
+end
+
+% Add white noise with SNR level snr.
+% For reproducible noise samples (specify RNG seed)
+rng(0);                              % set seed
+analog = analog + awgn(analog, snr, 'measured', 'db');
+
+% Recover digital by sampling analog at symbol instants (nearest indices)
+L = fs_analog / fs_sym;        % integer upsample factor (should be integer)
+if abs(L - round(L)) > 1e-10
+    error('fs_analog must be an integer multiple of fs_sym for simple downsampling. Use resample for arbitrary ratios.');
+end
+L = round(L);
+recovered_samples = analog(1:L:end);   % pick samples corresponding to symbol instants
+
+% Decision device (hard decision to ±1)
+x_rec = sign(recovered_samples);
+x_rec(x_rec==0) = 1;           % tie-break if exact zero
+
+end
+
+function faithful = getfaithful(n,omegaw,fmax,snr)
+% This function calculates the faithful set of Walsh matrix rows given a
+% signal-noise ratio.
+
+h = n*fwht(eye(n)); % Walsh ordering
+
+for i = 1:n
+    % See if this can be vectorized!
+    % Compute the best match for row i.
+    bestvec(i) = bestmatch(i,h,n,omegaw,fmax,snr);
+end
+
+% Echo value
+if mod(omegaw,8)==0
+    fprintf('omegaw = %d\n', omegaw);
+end
+
+% Compute the faithful set.
+faithful = (bestvec == (1:length(bestvec)));
 
 end
 
