@@ -1,4 +1,4 @@
-function return_data = adam_faithful(inp_seq)
+function return_data = adam_faithful(inp_seq,cutoff)
 
     % choose code length
     code_length = length(inp_seq);
@@ -21,7 +21,6 @@ function return_data = adam_faithful(inp_seq)
     % Define frequencies and cutoff
     k = [0:M/2-1 -M/2:-1]';
     xi = 2*pi*k/code_length;
-    cutoff = 1;
 
     % fft -> filter -> ifft
     Fhat = fft(inp_con_fill);
@@ -40,11 +39,13 @@ function return_data = adam_faithful(inp_seq)
     out_cont_fill = out_con_fill(1:m:end);
     out_seq = 2*(diff(out_cont_fill) >= 0) - 1;
 
+    return_data = out_seq;
+
     %inp_seq.'
     %out_seq.'
 
-    num_diff = sum(inp_seq ~= out_seq);
+    %num_diff = sum(inp_seq ~= out_seq);
 
-    return_data = num_diff;
+    %return_data = num_diff;
 
 end
