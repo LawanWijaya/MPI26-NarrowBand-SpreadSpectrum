@@ -16,7 +16,8 @@ Last modified by David A. Edwards on 6/15/26.
 
 % Define parameters.
 
-fmax = 512; % desired analog bandwidth (Hz): also called omegaa.
+% fmax = 512; % desired analog bandwidth (Hz): also called omegaa.
+% (Included in the loop)
 % i: index of rows
 n = 512; % Size of Hadamard matrix
 % omegaw: Word transmission rate.
@@ -40,7 +41,7 @@ snr = Inf;
 
 for ffactor = 1:2
 
-    fmax = 512*ffactor
+    fmax = n*ffactor
 
     for omegaw = 1:omegawmax
 
@@ -145,8 +146,8 @@ hold off;
 numBits = 4;
 K = 2^numBits;   % 16 rows needed for 4-bit words
 
-n = 512;
-omegaw = 30;     % choose the word rate you want to study
+% n = 512;       % already defined
+omegaw = 10;     % choose the word rate you want to study
 fmax = 512;      % choose bandwidth
 snr = Inf;       % no noise
 
