@@ -1,10 +1,12 @@
-function return_data = run_cutoff_trend(sz,cutoffs)
+function [return_data_coarse, return_data_fine] = run_cutoff_trend(sz,cutoffs)
 
     N = sz;
 
     Hn = hadamard(N);
 
     fcs = zeros(1, length(cutoffs));
+
+    fine_result = zeros(sz,length(cutoffs));
 
     for c_e = 1:length(cutoffs)
 
@@ -31,6 +33,7 @@ function return_data = run_cutoff_trend(sz,cutoffs)
 
             if close_match
                 faithful_count = faithful_count + 1;
+                fine_result(h,c_e) = 1;
             end
 
         end
@@ -39,6 +42,7 @@ function return_data = run_cutoff_trend(sz,cutoffs)
 
     end
 
-    return_data = fcs;
+    return_data_coarse = fcs;
+    return_data_fine = fine_result;
 
 end
