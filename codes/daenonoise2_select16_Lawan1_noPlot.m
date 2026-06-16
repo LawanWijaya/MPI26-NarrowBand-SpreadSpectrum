@@ -10,22 +10,22 @@ This code uses the Signal Processing Toolbox,
 Communication Toolbox and the Curve Fitting Toolbox.
 
 Last modified by David A. Edwards on 6/15/26.
-
+512
 %}
 
 
 % Define parameters.
 
-fmax = 512; % desired analog bandwidth (Hz): also called omegaa.
+% fmax = 512; % desired analog bandwidth (Hz): also called omegaa.
 % i: index of rows
-n = 512; % Size of Hadamard matrix
+% % % % n = 512; % Size of Hadamard matrix
 % omegaw: Word transmission rate.
-omegawmax = 10;%64; % Maximum word transmission rate.
+% % % % omegawmax = 64; % Maximum word transmission rate.
 
 % Variables
-bestvec = zeros(n,1); % Vector of row of best matches.
+% % % % bestvec = zeros(n,1); % Vector of row of best matches.
 % faithful: Vector of faithful set.
-plotset = zeros(omegawmax,2); % Plotting vector
+% % % % plotset = zeros(omegawmax,2); % Plotting vector
 
 
 % Define vectors to be used.
@@ -145,8 +145,8 @@ plotset = zeros(omegawmax,2); % Plotting vector
 numBits = 4;
 K = 2^numBits;   % 16 rows needed for 4-bit words
 
-n = 512;
-omegaw = 30;     % choose the word rate you want to study
+% n = 1024;         % size of the hadamard
+omegaw = 10;     % choose the word rate you want to study
 fmax = 512;      % choose bandwidth
 snr = Inf;       % no noise
 
