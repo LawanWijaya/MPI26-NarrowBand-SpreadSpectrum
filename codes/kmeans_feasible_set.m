@@ -16,9 +16,10 @@ end
 
 lind=(1:1:rsize)';
 M = M*randn(rsize,kdim)/sqrt(kdim); % "lower-dimensional" Gaussian embedding
-opts=statset('Display','final');
+%opts=statset('Display','final');
 % Define the number of clusters and perform k-means clustering
-[idx, centroids] = kmeans(M, snum,Distance="sqeuclidean",Replicates=kdim,Options=opts);
+%[idx, centroids] = kmeans(M, snum,Distance="sqeuclidean",Replicates=kdim,Options=opts);
+[idx, centroids] = kmeans(M, snum,Distance="sqeuclidean",Replicates=kdim);
 % Extract the subset of chips based on cluster indices
 sets = zeros(snum,1);
 for i = 1:snum
