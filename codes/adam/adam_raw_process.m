@@ -6,42 +6,76 @@ addpath(genpath('C:\Users\adamn\OneDrive\Documents\GitHub\MPI26-NarrowBand-Sprea
 [faithful_coarse,faithful_fine] = run_cutoff_trend(9,700);
 faithful_set = find(faithful_fine);
 
-length(faithful_set)
-
 wr = 4;
 n = 9;
 
-lawbook = construct_lawbook(wr,faithful_set,@david1_best);
-lawbook(1,:);
+algos = {@lawan5_best @david1_best @david2_best @henry1_best};
+algo_titles = ["Lawan" "David" "Dr. Edwards" "Henry"];
 
-basins = zeros(size(lawbook,1),1);
-for i = 1%:size(lawbook,1)
-    basins(i) = test_basin(lawbook(i,:));
+algo_comparison = figure(6);
+clf(algo_comparison);
+
+t = tiledlayout(2,2,'Padding','loose','TileSpacing','compact');
+ax = gobjects(4,1);
+
+M_temp = 0;
+
+for k = 1:4
+
+    ax(k) = nexttile;
+
+    lawbook = construct_lawbook(wr,faithful_set,algos{k});
+    cd_tot = size(lawbook,1);
+
+    lawbook(1,end)
+
+    basins = zeros(cd_tot,1);
+    for i = 1:cd_tot
+        basins(i) = test_basin(lawbook(i,:));
+    end
+    M_temp = max(M_temp,max(basins));
+
+    code_swapping = zeros(cd_tot,max(faithful_set));
+    for i = 1:cd_tot
+        code_swapping(i,lawbook(i,:)) = true;
+    end
+    code_swapping = 1-code_swapping;
+
+    hold on
+
+    imagesc(ax(k),1:cd_tot,1:max(faithful_set),code_swapping.');
+    colormap([0 0 0; 1 1 1]);
+
+    x = (1:cd_tot);
+    yyaxis(ax(k),'right')
+    plot(ax(k),x,basins,'r-o','LineWidth',2)
+
+    title(sprintf("Codebooks by %s",algo_titles(k)))
+
 end
 
-lawbook(1,:);
-%basins
-
-basins;
-
-code_swapping = zeros(size(lawbook,1),max(faithful_set));
-
-for i = 1:size(lawbook,1)
-    code_swapping(i,lawbook(i,:)) = true;
+for k = 1:4
+    yyaxis(ax(k),'right')
+    ax(k).YColor = 'k';
+    ylim(ax(k),[0,M_temp+1])
+    xlim(ax(k),[0,cd_tot+1])
 end
-code_swapping = 1-code_swapping;
 
-checkerboard_s = figure(4);
-clf(checkerboard_s);
-checkerboard_s_ax = axes(checkerboard_s);
-imagesc(checkerboard_s_ax,1:size(lawbook,1),1:(2^n),code_swapping.');
-colormap([0 0 0; 1 1 1]);
+t.OuterPosition = [0.05 0.05 0.85 0.9];
 
-xlabel(checkerboard_s_ax,'Codebok #')
-ylabel(checkerboard_s_ax,'Walsh Row #')
-title(checkerboard_s_ax,'Lawbook')
+linkaxes(ax,'x')
+title(t,"Generation of Codebooks")
+xlabel(t,"Codebook #")
+ylabel(t,"Code (Walsh) #")
 
-saveas(checkerboard_s_ax,'checkerboard_s.png')
+annotation('textbox',[0.88 0.57 0.1 0.1],...
+    'String','Min Basin Size',...
+    'Rotation',-90,...
+    'EdgeColor','none',...
+    'HorizontalAlignment','center', ...
+    'FontSize',12);
+
+saveas(t,'comparing_algos.png')
 
 %%
 

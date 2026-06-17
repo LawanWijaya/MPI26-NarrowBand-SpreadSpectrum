@@ -12,8 +12,6 @@ function return_data = test_basin(bestfit)
     end
     basin(end) = half_gap(end) + max(bestfit);
 
-    %basin
-
     return_data = min(basin);
 
 end
