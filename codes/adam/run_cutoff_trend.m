@@ -1,8 +1,9 @@
 function [return_data_coarse, return_data_fine] = run_cutoff_trend(sz,cutoffs)
 
-    N = sz;
-
-    Hn = hadamard(N);
+    N = 2^sz;
+    %Hn = hadamard(N);
+    Hn = HadtoW(sz);
+    %Hn = HadtoD(sz);
 
     fcs = zeros(1, length(cutoffs));
 
@@ -25,8 +26,8 @@ function [return_data_coarse, return_data_fine] = run_cutoff_trend(sz,cutoffs)
             idxs = find(diff_counts == min_val);
 
             close_match = 0;
-            for m = idxs
-                if inp_seq == Hn(m,:).'
+            if isscalar(idxs)
+                if inp_seq == Hn(idxs,:).'
                     close_match = 1;
                 end
             end
