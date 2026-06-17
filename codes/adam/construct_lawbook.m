@@ -2,7 +2,7 @@ function return_data = construct_lawbook(w,faithful,find_best)
 
     cds = floor(length(faithful)/(2^w));
 
-    lawbook = zeros(cds,w^2);
+    lawbook = zeros(cds,2^w);
 
     for cd = 1:cds
 

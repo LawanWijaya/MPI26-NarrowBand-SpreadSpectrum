@@ -7,7 +7,7 @@ function [return_data_coarse, return_data_fine] = run_cutoff_trend(sz,cutoffs)
 
     fcs = zeros(1, length(cutoffs));
 
-    fine_result = zeros(sz,length(cutoffs));
+    fine_result = zeros(N,length(cutoffs));
 
     for c_e = 1:length(cutoffs)
 

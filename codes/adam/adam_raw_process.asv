@@ -3,12 +3,44 @@ addpath(genpath('C:\Users\adamn\OneDrive\Documents\GitHub\MPI26-NarrowBand-Sprea
 
 %%
 
-input = 2*randi([0,1],1,16) - 1;
-output = simulate_fading(input);
+[faithful_coarse,faithful_fine] = run_cutoff_trend(9,700);
+faithful_set = find(faithful_fine);
+
+wr = 4;
+n = 9;
+
+lawbook = construct_lawbook(wr,faithful_set,@Lawan1_best);
+
+basins = zeros(size(lawbook,1),1);
+lawbook(1,)
+for i = 1:size(lawbook,1)
+    basins(i) = test_basin(lawbook(i,:),n,wr);
+end
+
+basins
+
+code_swapping = zeros(size(lawbook,1),max(faithful_set));
+
+for i = 1:size(lawbook,1)
+    code_swapping(i,lawbook(i,:)) = true;
+end
+code_swapping = 1-code_swapping;
+
+checkerboard_s = figure(4);
+clf(checkerboard_s);
+checkerboard_s_ax = axes(checkerboard_s);
+imagesc(checkerboard_s_ax,1:size(lawbook,1),1:(2^n),code_swapping.');
+colormap([0 0 0; 1 1 1]);
+
+xlabel(checkerboard_s_ax,'Codebok #')
+ylabel(checkerboard_s_ax,'Walsh Row #')
+title(checkerboard_s_ax,'Lawbook')
+
+saveas(checkerboard_s_ax,'checkerboard_s.png')
 
 %%
 
-cutoffs = 512:20:1024;
+cutoffs = 512:2:1024;
 
 n = 9;
 
