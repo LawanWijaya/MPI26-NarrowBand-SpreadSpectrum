@@ -11,6 +11,9 @@ Last modified by David A. Edwards on 6/17/26.
 
 %}
 
+% Clear all variables from previous runs.
+clear all
+
 
 % Define parameters.
 
@@ -53,18 +56,13 @@ pe  = 0.8509;  % probability of propagating error
 faithmat = cell(maxrun,1);
 plotset = zeros(omegawmax,3);
 
-% First plot: loop over omegaw, add noise, but just for n=512.
-
-% Loop over snr values.
-
 % Compute the Walsh matrix of size n.
 h = n*fwht(eye(n));
+eset = 2^w;
 
 snr = -3;
 
 % for snr = -3:-6:-9
-%
-%     for omegaw = 1:omegawmax
 
 for run = 1:maxrun
     faithful = getfaithful(h,omegaw,fmax,snr);
@@ -91,10 +89,12 @@ greedy = codeset(feasible,w);
 % Generate the codebooks with each algorithm.
 codebook = {h(greedy(:,1),:),h(greedy(:,2),:)};
 
-eset = 2^w;
 
-heatplot = cell(1,2);
 
+% % First plot: Heat map to show which code words transmit best.
+%
+% heatplot = cell(1,2);
+%
 % % Have to check each algorithm.
 % for alg = 1:2
 %     heatplot{alg}=zeros(eset,eset);
@@ -103,7 +103,7 @@ heatplot = cell(1,2);
 %     tempmat = zeros(eset,eset);
 %     % Get the received signal.  Note that we are passing the entire set
 %     % of rows, so
-%     faded = simulate_fading(codebook{1},pc,pe);
+%     faded = simulate_fading(codebook{alg},pc,pe);
 %     % Then compute the Walsh score of the input and output, which is 1 more than the number of
 %     % changes.
 %     outwalsh = sum(faded(:,1:end-1) .* faded(:,2:end) == -1, 2 );
@@ -123,20 +123,160 @@ heatplot = cell(1,2);
 %     heatplot{alg} = heatplot{alg}/faderun;
 %     corrplot(heatplot{alg},snr,n,maxrun,omegaw,faderun,alg,pc,pe)
 % end
+%
+% % Second plot: Heat map to show how the system is affected when the
+% % probabilities change.  Note that this only affects the fading, so we
+% % can use the same codebook.
+%
+% % Now do the computation for the probability map.
+% probmat = linspace(0.8,1,20);
+%
+% hp2 = cell(1,2);
+%
+% for alg = 1:2
+%     hp2{alg}=zeros(20,20);
+%     for i = 1:length(probmat)
+%         for j = 1:length(probmat)
+%             for frun = 1:faderun
+%                 % Get the received signal.  Note that we are passing the entire set
+%                 % of rows, so
+%                 faded = simulate_fading(codebook{alg},probmat(i),probmat(j));
+%                 % Then compute the Walsh score of the input and output, which is 1 more than the number of
+%                 % changes.
+%                 outwalsh = sum(faded(:,1:end-1) .* faded(:,2:end) == -1, 2 );
+%                 % [greedy(:,alg),outwalsh]
+%                 % Construct a matrix of the distances between greedy(i) and outwalsh(i):
+%                 D = abs(greedy(:,alg) - outwalsh.');
+%                 % Then find the minimum entry in each row, and find the index that matches
+%                 % it.
+%                 [distPerRow, cols] = min(D, [], 1);
+%                 % % Then if cols is the same as the input row number, we've matched.
+%                 % So we just sum them up.
+%                 hp2{alg}(i,j)=hp2{alg}(i,j)+sum((1:16)==cols);
+%                 % [1:16;cols;(1:16)==cols]'
+%             end
+%         end
+%     end
+%     % Then we normalize by the number of runs and the total length:
+%     hp2{alg} = hp2{alg}/faderun/eset;
+%     corrbyp(hp2{alg},snr,n,maxrun,omegaw,faderun,alg,probmat)
+% end
 
-% Now do the computation for the probability map.
-probmat = linspace(0.8,1,20);
+% % Third plot: probability vs bandwidth, with noise.
+% % for snr = -3:-6:-9
+% for snr = -3:-3
+%     % Reset the row number.
+%     count = 1;
+%     for fmax = 512:8:1024 % Go from 512 to 1024 by 8s
+%         for run = 1:maxrun
+%             faithful = getfaithful(h,omegaw,fmax,snr);
+%             faithmat{run,1} = faithful;
+%         end
+% 
+%         % Echo value
+%         if mod(fmax,64)==0
+%             fprintf('fmax = %d\n', fmax);
+%         end
+% 
+%         % Adam wants the greedy algorithm alone given fcap, so:
+% 
+%         % Compute the feasible set.
+%         % Step 1: Combine the rows of faithmat into a single matrix which can be
+%         % analyzed.
+%         % faithmat is maxrun-by-1 cell, each cell is a 1-by-N or N-by-1 vector of 0/1
+%         onemat = vertcat(faithmat{:});        % maxrun-by-N numeric matrix
+% 
+%         % Step 2: Create an array that has a 1 where all the rows where EVERY entry
+%         % is 1:
+%         twomat = all(onemat==1, 1)'; % 1-by-N logical: true where every run has a 1
+% 
+%         % Step 3: Now create an array that lists the row number (Walsh score) of
+%         % every matching row.
+%         feasible = find(twomat);
+% 
+%         greedy = codeset(feasible,w);
+%         % Generate the codebooks with each algorithm.
+%         codebook = {h(greedy(:,1),:),h(greedy(:,2),:)};
+% 
+%         for alg = 1:2
+%             hitrate = 0;
+%             for frun = 1:faderun
+%                 % Get the received signal.  Note that we are passing the entire set
+%                 % of rows, so
+%                 faded = simulate_fading(codebook{alg},0.99,0.99);
+%                 % Then compute the Walsh score of the input and output, which is 1 more than the number of
+%                 % changes.
+%                 outwalsh = sum(faded(:,1:end-1) .* faded(:,2:end) == -1, 2 );
+%                 % [greedy(:,alg),outwalsh]
+%                 % Construct a matrix of the distances between greedy(i) and outwalsh(i):
+%                 D = abs(greedy(:,alg) - outwalsh.');
+%                 % Then find the minimum entry in each row, and find the index that matches
+%                 % it.
+%                 [distPerRow, cols] = min(D, [], 1);
+%                 % % Then if cols is the same as the input row number, we've matched.
+%                 % So we just sum them up.
+%                 hitrate = hitrate +sum((1:16)==cols);
+%                 % [1:16;cols;(1:16)==cols]'
+%             end
+%             plotset(count,alg+1) = hitrate/faderun/eset;
+%         end
+%         % We put the x-value in the first column for plotting.
+%         plotset(count,1) = fmax;
+%         count = count+1;
+% 
+%     end
+% 
+% end
+% 
+% % Then plot the result:
+% 
+% bandplot(plotset,snr,n,maxrun,omegaw,faderun,0.99,0.99);
 
-heatplot = cell(1,2);
+% Fourth plot: loop over omegaw, add noise, but just for n=512.
 
-for alg = 1:2
-    hp2{alg}=zeros(20,20);
-    for i = 1:length(probmat)
-        for j = 1:length(probmat)
+% Loop over snr values.
+
+% for snr = -3:-6:-9
+
+plotset = zeros(omegawmax,3);
+
+for snr = -3:-3
+    for omegaw = 1:omegawmax
+        if mod(omegaw,8)==0
+            fprintf('omegaw = %d\n', omegaw);
+        end
+
+        for run = 1:maxrun
+            faithful = getfaithful(h,omegaw,fmax,snr);
+            faithmat{run,1} = faithful;
+        end
+
+        % Adam wants the greedy algorithm alone given fcap, so:
+
+        % Compute the feasible set.
+        % Step 1: Combine the rows of faithmat into a single matrix which can be
+        % analyzed.
+        % faithmat is maxrun-by-1 cell, each cell is a 1-by-N or N-by-1 vector of 0/1
+        onemat = vertcat(faithmat{:});        % maxrun-by-N numeric matrix
+
+        % Step 2: Create an array that has a 1 where all the rows where EVERY entry
+        % is 1:
+        twomat = all(onemat==1, 1)'; % 1-by-N logical: true where every run has a 1
+
+        % Step 3: Now create an array that lists the row number (Walsh score) of
+        % every matching row.
+        feasible = find(twomat);
+
+        greedy = codeset(feasible,w);
+
+        codebook = {h(greedy(:,1),:),h(greedy(:,2),:)};
+
+        for alg = 1:2
+            hitrate = 0;
             for frun = 1:faderun
                 % Get the received signal.  Note that we are passing the entire set
                 % of rows, so
-                faded = simulate_fading(codebook{1},probmat(i),probmat(j));
+                faded = simulate_fading(codebook{alg},0.99,0.99);
                 % Then compute the Walsh score of the input and output, which is 1 more than the number of
                 % changes.
                 outwalsh = sum(faded(:,1:end-1) .* faded(:,2:end) == -1, 2 );
@@ -148,59 +288,20 @@ for alg = 1:2
                 [distPerRow, cols] = min(D, [], 1);
                 % % Then if cols is the same as the input row number, we've matched.
                 % So we just sum them up.
-                hp2{alg}(i,j)=hp2{alg}(i,j)+sum((1:16)==cols);
+                hitrate = hitrate +sum((1:16)==cols);
                 % [1:16;cols;(1:16)==cols]'
             end
+            plotset(omegaw,alg+1) = hitrate/faderun/eset;
         end
+        % We put the x-value in the first column for plotting.
+        plotset(:,1) = 1:omegawmax;
     end
-    % Then we normalize by the number of runs and the total length:
-    hp2{alg} = hp2{alg}/faderun/eset;
-    corrbyp(hp2{alg},snr,n,maxrun,omegaw,faderun,alg,probmat)
+
+    % % Then plot the result:
+
+    omegaplot(plotset,snr,n,maxrun,faderun,0.99,0.99);
+
 end
-
-
-
-
-% end
-
-% end
-
-
-% % Second plot: F vs bandwidth, with noise.
-% for snr = -3:-6:-9
-%     % for snr = -3:-3
-%     % Reset the row number.
-%     count = 1;
-%     for fmax = 512:8:1024 % Go from 512 to 1024 by 8s
-% 
-%         for run = 1:maxrun
-% 
-%             faithful = getfaithful(n,omegaw,fmax,snr);
-%             faithmat{run,1} = faithful;
-% 
-%         end
-% 
-%         % Echo value
-%         if mod(fmax,64)==0
-%             fprintf('fmax = %d\n', fmax);
-%         end
-% 
-%         greedy = codeset(faithmat,esize);
-% 
-%         % Then get the minimum distance in each column for plotting.  diff gives us
-%         % the differences, and the other arguments in min tell it to minimize by
-%         % columns.
-%         % We put the x-value in the first column for plotting.
-%         plotset(count,:) = [fmax,min(diff(greedy,1,1), [], 1)];  % 1-by-numCols
-%         count = count+1;
-% 
-%     end
-% 
-%     % % Then plot the result:
-% 
-%     bandplot(plotset,snr,n,maxrun,omegaw);
-% 
-% end
 
 %%
 function f = bestmatch(i,h,n,omegaw,fmax,snr)
@@ -421,12 +522,56 @@ h.XLabel = 'Decoded';
 %               If you have SPRINTF, then use \\ everywhere.
 line1 = append(line1,sprintf(', $n=%d$, $\\omega_{\\rm a}=%d$ Hz', n,n));
 line2 = sprintf('$\\omega_{\\rm w}=%d$ Hz, %d AWGN runs, %d fade runs, $r=%d$', omegaw, maxrun, faderun, snr);
-line2 = append(line2,sprintf(', $P_{\\rm new}=%.4f$, $P_{\\rm con}=%.4f$',pc,pe));
+line2 = append(line2,sprintf(', $P_{\\rm c}=%.4f$, $P_{\\rm e}=%.4f$',pc,pe));
 
 
 % Put each line in a cell array so title creates multiple lines
 h.Title = {line1; line2};
 h.Interpreter = 'latex';
+
+end
+
+function omegaplot(plotset,snr,n,maxrun,faderun,pc,pe)
+
+% This function does plots vs omegaw of the minimum distance.
+
+% Called by: main
+% Calls: none
+
+% Input parameters:
+% maxrun: number of simulated runs
+% n: length of chip sequences
+% plotset: log(F) values (1st column cutoff 512, second column cutoff 1024)
+% snr: signal-to-noise ratio (in dB)
+
+% Plot using omegaw on x-axis
+figure;
+hold on;
+% x = (1:length(plotset))'; % x-axis (word rate)
+
+h1 = plot(plotset(:,1), plotset(:,2), '-', 'Color', 'k', 'MarkerEdgeColor', 'k', ...
+    'MarkerFaceColor', 'none', 'LineWidth', 1.2, 'MarkerSize', 6);
+h2 = plot(plotset(:,1), plotset(:,3), '-', 'Color', 'r', 'MarkerEdgeColor', 'r', ...
+    'MarkerFaceColor', 'none', 'LineWidth', 1.2, 'MarkerSize', 6);
+
+% Then use the string in the title and y-axis:
+% IMPORTANT: If you have a STRING, use typical LaTEX notation.
+%               If you have SPRINTF, then use \\ everywhere.
+line1 = 'Probability correct {\it vs}. word rate';
+line1 = append(line1,sprintf(', $n=%d$, $\\omega_{\\rm a}=%d$ Hz', n,n));
+line2 = sprintf('%d AWGN runs, %d fade runs, $r=%d$', maxrun, faderun, snr);
+line2 = append(line2,sprintf(', $P_{\\rm c}=%.4f$, $P_{\\rm e}=%.4f$',pc,pe));
+tstring = {line1;line2};
+title(tstring);
+ylabel('Probability correct');
+
+% Labels, limits, legend
+xlabel('Word rate $\omega_{\rm w}$ (Hz)');
+xlim([1 length(plotset)]);
+grid on;
+legend([h1 h2], {'Greedy First', 'Greedy Last'});
+
+hold off;
 
 end
 
@@ -472,7 +617,7 @@ h.YLabel = '$P_{\rm e}$';
 %               If you have SPRINTF, then use \\ everywhere.
 line1 = append(line1,sprintf(', $n=%d$, $\\omega_{\\rm a}=%d$ Hz', n,n));
 line2 = sprintf('$\\omega_{\\rm w}=%d$ Hz, %d AWGN runs, %d fade runs, $r=%d$', omegaw, maxrun, faderun, snr);
-% line2 = append(line2,sprintf(', $P_{\\rm new}=%.4f$, $P_{\\rm con}=%.4f$',pc,pe));
+% line2 = append(line2,sprintf(', $P_{\\rm c}=%.4f$, $P_{\\rm e}=%.4f$',pc,pe));
 
 
 % Put each line in a cell array so title creates multiple lines
@@ -480,7 +625,7 @@ h.Title = {line1; line2};
 
 end
 
-function bandplot(plotset,snr,n,maxrun,omegaw)
+function bandplot(plotset,snr,n,maxrun,omegaw,faderun,pc,pe)
 
 % This function does linear plots vs bandwidth.
 
@@ -489,7 +634,7 @@ function bandplot(plotset,snr,n,maxrun,omegaw)
 
 % Input parameters:
 % n: length of chip sequences
-% plotset: log(F) values (1st column cutoff 512, second column cutoff 1024)
+% plotset: plot of probabilities
 % snr: signal-to-noise ratio (in dB)
 
 % Plot using omegaw on x-axis
@@ -503,21 +648,16 @@ h1 = plot(plotset(:,1), plotset(:,2), '-', 'Color', 'k', 'MarkerEdgeColor', 'k',
 h2 = plot(plotset(:,1), plotset(:,3), '-', 'Color', 'r', 'MarkerEdgeColor', 'r', ...
     'MarkerFaceColor', 'none', 'LineWidth', 1.2, 'MarkerSize', 6);
 
-% % Create a string which represents the correct argument for snr:
-% if snr == Inf
-%     fstring = "$|F(\infty)|$";
-% else
-%     fstring = sprintf('$|F(%.3g)|$',snr);
-% end
-
 % Then use the string in the title and y-axis:
 % IMPORTANT: If you have a STRING, use typical LaTEX notation.
 %               If you have SPRINTF, then use \\ everywhere.
-tstring = 'Minimum distance {\it vs}. bandwidth, ';
-tstring = append(tstring,sprintf('$\\omega_{\\rm w}=%d$ Hz, $n=%d$, ',omegaw,n));
-tstring = append(tstring,sprintf('%d runs, $r=%d$',maxrun,snr));
+line1 = 'Probability correct {\it vs}. bandwidth';
+line1 = append(line1,sprintf(', $n=%d$, $\\omega_{\\rm w}=%d$ Hz', n,omegaw));
+line2 = sprintf('%d AWGN runs, %d fade runs, $r=%d$', maxrun, faderun, snr);
+line2 = append(line2,sprintf(', $P_{\\rm c}=%.4f$, $P_{\\rm e}=%.4f$',pc,pe));
+tstring = {line1;line2};
 title(tstring);
-ylabel('Minimum distance');
+ylabel('Probability correct');
 
 xlabel('Bandwidth $\omega_{\rm a}$ (Hz)');
 xlim([512 1024]);
