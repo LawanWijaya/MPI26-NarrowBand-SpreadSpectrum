@@ -522,7 +522,7 @@ end
 
 
 function chosenIdx = greedyChooseWithGap(idxSorted, freqSorted, K, gap)
-
+% this is the binary search.
 chosenIdx = idxSorted(1);
 lastFreq = freqSorted(1);
 
