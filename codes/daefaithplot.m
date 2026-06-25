@@ -1,126 +1,133 @@
 %{
 daefaithplot.m
 
-This code performs several faithful-encoding calculations to provide the
-related figures in the report.
+This code generates the feasible set for certain conditions, and provides
+plots for the paper.  It does not select codebooks.
 
 This code uses the Signal Processing Toolbox, 
 Communication Toolbox and the Curve Fitting Toolbox.
 
-Last modified by David A. Edwards on 6/16/26.
+Last modified by David A. Edwards on 6/24/26.
 
 %}
 
+% Clear all variables from previous runs.
+clear all
+% This command preserves the kernel state upon bugs.
+
+dbstop if error
+
+% % Set LaTeX interpreters and default font size for all plots.
+set(groot, 'defaultTextInterpreter', 'latex', ...
+    'defaultAxesTickLabelInterpreter', 'latex', ...
+    'defaultLegendInterpreter', 'latex', ...
+    'defaultAxesFontSize', 14, ...
+    'defaultTextFontSize', 14); 
 
 % Define parameters.
-
-fmax = 512; % desired analog bandwidth (Hz): also called omegaa.
-% i: index of rows
+maxrun = 50; % Number of runs to use with noise.
+maxrun = 50; % Number of runs to use with noise.
 n = 512; % Size of Hadamard matrix
-% omegaw: Word transmission rate.
 omegawmax = 64; % Maximum word transmission rate.
 
 % Variables
 bestvec = zeros(n,1); % Vector of row of best matches.
+% colsAllOnes: vector that stores the intersection (feasible) set
+% count: row number in certain loops
 % faithful: Vector of faithful set.
-plotset = zeros(omegawmax,2); % Plotting vector
+% faithmat contains the results from all the runs.  We use a cell array so
+% that we can store the arrays inside without worrying about three indices:
+faithmat = cell(maxrun,1);
+% ffactor: looping variable for fmax
+% fmax: desired analog bandwidth (Hz): also called omegaa.
+% h: Walsh matrix
+% i: index of rows
+% intermat: matrix with all the closest vectors as rows
+% omegaw: Word transmission rate.
+plotset = zeros(omegawmax,4); % Plotting vector, variously defined
+% run: looping variable over runs
+% snr: signal-to-noise ratio
 
-% Number of runs to use with noise.
-maxrun = 50;
-maxrun = 10;
-
-% Define vectors to be used.
-
-% omegaw = 1;
-
-% % Set LaTeX interpreters and default font size for all plots.
-set(groot, 'defaultTextInterpreter', 'latex', ...
-           'defaultAxesTickLabelInterpreter', 'latex', ...
-           'defaultLegendInterpreter', 'latex', ...
-           'defaultAxesFontSize', 14, ...
-           'defaultTextFontSize', 14); 
-
-%
+% Compute the Walsh matrix of size n.
+h = n*fwht(eye(n));
 
 % First plot: F vs omegaw, no noise.
 
 % snr = Inf corresponds to no noise.
 snr = Inf;
 
+% Loop over cutoffs.
+
 for ffactor = 1:2
 
+    % Compute actual cutoff number.
     fmax = n*ffactor
 
+    % Loop over word rates.
     for omegaw = 1:omegawmax
 
-        faithful = getfaithful(n,omegaw,fmax,snr);
+        faithful = getfaithful(h,omegaw,fmax,snr);
 
-        % For a particular value of omegaw, keep faithful for quoting
-        if omegaw==30
-            f30 = faithful;
-        end
+        % % For a particular value of omegaw, keep faithful for quoting
+        % if omegaw==30
+        %     f30 = faithful;
+        % end
         % Compute the size of the faithful set, and store for later plotting.
         % We want to do an exponential fit, so we take the log.
         plotset(omegaw,ffactor)=log(sum(faithful));
-
     end
-
 end
 
 % % Then plot the result:
 
-omegaplot(plotset,snr,n);
+rateplot(plotset,snr,n);
 
 %
+fmax = 512; % desired analog bandwidth (Hz): also called omegaa.
 
-% Second plot: add noise, but just for n=512.
-
-% Define plot arrays.
-% faithmat contains the results from all the runs.  We use a cell array so
-% that we can store the arrays inside without worrying about three indices:
-faithmat = cell(maxrun,1);
-% noisyplot contains the columns to be plotted.  We only use the fourth
-% column in the other plot.
-noisyplot = zeros(omegawmax,4);
+% Second plot: add noise, but just for fmax=512.
 
 % Loop over snr values.
 
 for snr = -3:-6:-9
 
+    % Loop over cutoff values
+
     for omegaw = 1:omegawmax
+
+        % Loop over runs.
 
         for run = 1:maxrun
 
-            faithful = getfaithful(n,omegaw,fmax,snr);
+            faithful = getfaithful(h,omegaw,fmax,snr);
             faithmat{run,1} = faithful;
 
         end
 
-        % Compute the size of the faithful set, and store for later plotting.
         % We want to do an exponential fit, so we take the log.
         % The first entry is one run picked at random.
         randrun = randi(maxrun);
-        noisyplot(omegaw,1)=log(sum(faithmat{randrun,1}));
+        plotset(omegaw,1)=log(sum(faithmat{randrun,1}));
         % The second entry is the average.  First we sum each of the runs to
         % find F:
-        test = cellfun(@sum,faithmat);
+        intermat = cellfun(@sum,faithmat);
         % Then take the mean of all those sums:
-        noisyplot(omegaw,2)=log(mean(test));
+        plotset(omegaw,2)=log(mean(intermat));
         % The last entry is the intersection.  So we count the number of rows
         % where EVERY entry is 1:
 
         % faithmat is maxrun-by-1 cell, each cell is a 1-by-N or N-by-1 vector of 0/1
-        M = vertcat(faithmat{:});        % maxrun-by-N numeric matrix
+        intermat = vertcat(faithmat{:});        % maxrun-by-N numeric matrix
 
-        colsAllOnes = all(M == 1, 1);    % 1-by-N logical: true where every run has a 1
+        colsAllOnes = all(intermat == 1, 1);    % 1-by-N logical: true where every run has a 1
        % scalar: number of indices i where all cells have 1
-        noisyplot(omegaw,3)=log(sum(colsAllOnes));
+        plotset(omegaw,3)=log(sum(colsAllOnes));
 
     end
 
     % % Then plot the result:
 
-    nomegaplot(noisyplot,snr,n,maxrun);
+    nrateplot(plotset,snr,n,maxrun);
 
 end
 
@@ -131,9 +138,10 @@ omegaw = 10;
 % This counts the row number because fmax jumps.
 count = 1;
 snr = Inf;
+% Loop over cutoffs
 for fmax = 512:8:1024 % Go from 512 to 1024 by 8s
 
-    faithful = getfaithful(n,omegaw,fmax,snr);
+    faithful = getfaithful(h,omegaw,fmax,snr);
 
     % Echo value
     if mod(fmax,64)==0
@@ -141,7 +149,7 @@ for fmax = 512:8:1024 % Go from 512 to 1024 by 8s
     end
 
     % Compute the size of the faithful set, and store for later plotting:
-    plotset(count,:)=[fmax,sum(faithful)];
+    plotset(count,1:2)=[fmax,sum(faithful)];
     count = count+1;
 
 end
@@ -159,7 +167,7 @@ for snr = -3:-6:-9
 
         for run = 1:maxrun
 
-            faithful = getfaithful(n,omegaw,fmax,snr);
+            faithful = getfaithful(h,omegaw,fmax,snr);
             faithmat{run,1} = faithful;
 
         end
@@ -173,32 +181,32 @@ for snr = -3:-6:-9
         % We want to do an exponential fit, so we take the log.
         % The first entry is one run picked at random.
         randrun = randi(maxrun);
-        noisyplot(count,1)=sum(faithmat{randrun,1});
+        plotset(count,1)=sum(faithmat{randrun,1});
         % The second entry is the average.  First we sum each of the runs to
         % find F:
-        test = cellfun(@sum,faithmat);
+        intermat = cellfun(@sum,faithmat);
         % Then take the mean of all those sums:
-        noisyplot(count,2)=mean(test);
+        plotset(count,2)=mean(intermat);
         % The last entry is the intersection.  So we count the number of rows
         % where EVERY entry is 1:
 
         % faithmat is maxrun-by-1 cell, each cell is a 1-by-N or N-by-1 vector of 0/1
-        M = vertcat(faithmat{:});        % maxrun-by-N numeric matrix
+        intermat = vertcat(faithmat{:});        % maxrun-by-N numeric matrix
 
-        colsAllOnes = all(M == 1, 1);    % 1-by-N logical: true where every run has a 1
+        colsAllOnes = all(intermat == 1, 1);    % 1-by-N logical: true where every run has a 1
         % scalar: number of indices i where all cells have 1
 
-        noisyplot(count,3)=sum(colsAllOnes);
+        plotset(count,3)=sum(colsAllOnes);
 
         % Compute the size of the faithful set, and store for later plotting:
-        noisyplot(count,4)=fmax;
+        plotset(count,4)=fmax;
         count = count+1;
 
     end
 
     % % Then plot the result:
 
-    nbandplot(noisyplot,snr,n,maxrun,omegaw);
+    nbandplot(plotset,snr,n,maxrun,omegaw);
 
 end
 
@@ -224,19 +232,15 @@ function f = bestmatch(i,h,n,omegaw,fmax,snr)
 % bestmatch: index of encoding which best matches the received state
 
 % Internal variables:
+% d: % m-by-1 vector of Hamming distances from each row
 % DADflag: 1 if using Matlab's converter; 2 if using Adam's
-
-DADflag = 1;
-
-% Internal variables:
+% f: vector of all matches to the minimum
 fs_sym = n*omegaw;  % symbol/sample rate (Hz) - must be > 2*fmax_symbol? here choose >= 2*fmax/n/A
 fs_analog = fs_sym; % analog sampling frequency (Hz), must satisfy fs_analog > 2*fmax
-% Create the nxn Hadamard matrix in Walsh order
+% x: Input string
+% x_rec: Received string
 
-
-% Upsample ratio p/q for resample: convert from fs_sym to fs_analog
-% p = fs_analog;
-% q = fs_sym;
+DADflag = 1;
 
 % The input string is the ith row of the Walsh matrix:
 x = h(i,:);
@@ -250,11 +254,9 @@ else
     x_rec = adam_DAD(x',fs_analog/omegaw^2);
 end
 
-% x_rec;
-
 % Now that we have computed x_rec, we find the encoding with minimum
 % distance from it.
-d = sum(h ~= x_rec, 2);    % m-by-1 vector of Hamming distances from each row
+d = sum(h ~= x_rec, 2);    
 % Next we find the indices of all entries that match the minimum:
 f = find(d == min(d));
 % For the encoding to be faithful, it must be the ONLY minimum, so we check
@@ -263,16 +265,6 @@ f = find(d == min(d));
 if length(f)~=1
     f = 0;
 end
-
-% Metrics
-% mse_analog_vs_sym = mean((interp1(t_sym, x, t_analog, 'nearest') - analog).^2); % analog vs nearest-step
-% mse_rec = mean((x - x_rec).^2);
-% bit_errors = sum(x ~= x_rec);
-% ber = bit_errors / n;
-
-% fprintf('MSE (after analog interp vs nearest step) = %.6f\n', mse_analog_vs_sym);
-% fprintf('MSE (recovered symbols) = %.6f\n', mse_rec);
-%  fprintf('Bit errors = %d, BER = %.6f\n', bit_errors, ber);
 
 end
 
@@ -400,9 +392,10 @@ x_rec(x_rec==0) = 1;           % tie-break if exact zero
 
 end
 
-function omegaplot(plotset,snr,n)
+function rateplot(plotset,snr,n)
 
-% This function does log plots vs omegaw.
+% This function does plots vs omegaw (word rate) without noise, but with
+% fit.
 
 % Called by: main
 % Calls: none
@@ -411,6 +404,11 @@ function omegaplot(plotset,snr,n)
 % n: length of chip sequences
 % plotset: log(F) values (1st column cutoff 512, second column cutoff 1024)
 % snr: signal-to-noise ratio (in dB)
+
+% Internal parameters:
+% fstring: plot filename, axes string
+% tstring: plot title
+% x: x-coordinates of data points
 
 % Plot using omegaw on x-axis
 figure;
@@ -461,17 +459,18 @@ text(30,3, eqTexts{1}, 'Interpreter', 'latex', 'FontSize', 12, 'BackgroundColor'
 text(25.5,5.2, eqTexts{2}, 'Interpreter', 'latex', 'FontSize', 12, 'BackgroundColor', 'none', 'Color', colorsFit(2,:));
 
 % Create a string which represents the correct argument for snr:
+% IMPORTANT: If you have a STRING, use typical LaTEX notation.
+%               If you have SPRINTF, then use \\ everywhere.
 if snr == Inf
-    fstring = "$|F(\infty)|$";
+    fstring = "$\log|F(\infty)|$";
 else
-    fstring = sprintf('$|F(%.3g)|$',snr);
+    fstring = sprintf('$\\log|F(%.3g)|$',snr);
 end
 
 % Then use the string in the title and y-axis.
-% IMPORTANT: If you have a STRING, use typical LaTEX notation.
-%               If you have SPRINTF, then use \\ everywhere.
-tstring = append('log',fstring,' {\it vs}. word rate, ');
+tstring = append(fstring,' {\it vs}. word rate, ');
 tstring = append(tstring,sprintf('$n=%d$',n));
+% This interpreter seems to have be done separately.
 title(tstring, 'Interpreter', 'latex');
 ylabel(fstring);
 
@@ -479,17 +478,27 @@ ylabel(fstring);
 xlabel('Word rate $\omega_{\rm w}$ (Hz)');
 xlim([1 length(plotset)]);
 ylim([0 log(n)]);
-grid on;
 legend([h1 h2 hfit(1) hfit(2)], {'$\omega_a = 512$ Hz', '$\omega_a = 1024$ Hz', 'Exp fit (512)', 'Exp fit (1024)'}, ...
     'Location', 'best');
 
+% Put on a grid for better interpretation.
+grid on;
+
+% Close figure out.
 hold off;
+
+% Create filename for PDF file.
+fstring = 'fvratefit.pdf';
+% % Save figure to Matlab format so it can be easily edited later.
+% savefig(fstring);
+% Export to a PDF file.
+exportgraphics(gcf,fstring);
 
 end
 
-function nomegaplot(plotset,snr,n,maxrun)
+function nrateplot(plotset,snr,n,maxrun)
 
-% This function does log plots vs omegaw in the case of noise.
+% This function does log plots vs omegaw in the case of noise (no fits).
 
 % Called by: main
 % Calls: none
@@ -500,11 +509,18 @@ function nomegaplot(plotset,snr,n,maxrun)
 % plotset: log(F) values: 1st column one realization, then average, then intersection
 % snr: signal-to-noise ratio (in dB)
 
-% Plot using omegaw on x-axis
+% Internal parameters:
+% fstring: plot filename
+% tstring: plot title
+% x: x-coordinates of data points
+
+% Set up figure.
 figure;
 hold on;
+
 x = (1:length(plotset))'; % x-axis (word rate)
 
+% h1 is one run, h2 is average, h3 is intersection (feasible).
 h1 = plot(x, plotset(:,1), '-', 'Color', 'k', 'MarkerEdgeColor', 'k', ...
     'MarkerFaceColor', 'none', 'LineWidth', 1.2, 'MarkerSize', 6);
 h2 = plot(x, plotset(:,2), '-', 'Color', 'r', 'MarkerEdgeColor', 'r', ...
@@ -514,17 +530,17 @@ h3 = plot(x, plotset(:,3), '-', 'Color', 'b', 'MarkerEdgeColor', 'b', ...
 
 % Create a string which represents the correct argument for snr:
 if snr == Inf
-    fstring = "$|F(\infty)|$";
+    fstring = "$\log|F(\infty)|$";
 else
-    fstring = sprintf('$|F(%.3g)|$',snr);
+    fstring = sprintf('$\\log|F(%.3g)|$',snr);
 end
 
 % Then use the string in the title and y-axis.
 % IMPORTANT: If you have a STRING, use typical LaTEX notation.
 %               If you have SPRINTF, then use \\ everywhere.
-tstring = append('log',fstring,' {\it vs}. word rate, ');
-tstring = append('log',fstring,sprintf(' {\\it vs}. word rate, $n=%d$, ',n));
+tstring = append(fstring,sprintf(' {\\it vs}. word rate, $n=%d$, ',n));
 tstring = append(tstring,sprintf('$\\omega_{\\rm a}=%d$ Hz, %d runs',n,maxrun));
+% This interpreter seems to have be done separately.
 title(tstring, 'Interpreter', 'latex');
 ylabel(fstring);
 
@@ -532,10 +548,20 @@ ylabel(fstring);
 xlabel('Word rate $\omega_{\rm w}$ (Hz)');
 xlim([1 length(plotset)]);
 ylim([3 log(n)]);
-grid on;
 legend([h1 h2 h3], {'One Run', 'Average', 'Intersection'});
 
+% Put on a grid for better interpretation.
+grid on;
+
+% Close figure out.
 hold off;
+
+% Create filename for PDF file.  Use abs since snr<0.
+fstring = sprintf('f%dvrate.pdf',abs(snr));
+% % Save figure to Matlab format so it can be easily edited later.
+% savefig(fstring);
+% Export to a PDF file.
+exportgraphics(gcf,fstring);
 
 end
 
@@ -551,9 +577,12 @@ function bandplot(plotset,snr,n,omegaw)
 % plotset: 1st column cutoff omegaw, second column F
 % snr: signal-to-noise ratio (in dB)
 
-% Plot using omegaw on x-axis
+% Internal parameters:
+% fstring: plot filename
+% tstring: plot title
+% x: x-coordinates of data points
 
-% Then plot the result:
+% Set up figure.
 figure;
 hold on;
 
@@ -603,6 +632,7 @@ end
 %               If you have SPRINTF, then use \\ everywhere.
 tstring = append(fstring,sprintf(' vs. bandwidth, $\\omega_{\\rm w}=%d$ Hz, ',omegaw));
 tstring = append(tstring,sprintf('$n=%d$',n));
+% This interpreter seems to have be done separately.
 title(tstring, 'Interpreter', 'latex');
 ylabel(fstring);
 
@@ -610,12 +640,18 @@ xlabel('Bandwidth $\omega_{\rm a}$ (Hz)');
 xlim([512 1024]);
 % ylim([0 n]);
 
-% % Create legend labels "Analog cutoff = 512*column number" (use LaTeX)
-% labels = arrayfun(@(c) sprintf('Analog cutoff $\omega_{\rm a}$ = %d$ Hz', 512*c), 1:2, 'UniformOutput', false);
-% legend([h1 h2], labels, 'Location', 'best');
+% Put on a grid for better interpretation.
 grid on;
 
+% Close figure out.
 hold off;
+
+% Create filename for PDF file.
+fstring = 'fvratefit.pdf'
+% % Save figure to Matlab format so it can be easily edited later.
+% savefig(fstring);
+% Export to PDF file.
+exportgraphics(gcf, 'fvbandfit.pdf');
 
 end
 
@@ -631,12 +667,16 @@ function nbandplot(plotset,snr,n,maxrun,omegaw)
 % plotset: 1st column one realization, then average, then intersection
 % snr: signal-to-noise ratio (in dB)
 
-% Plot using omegaw on x-axis
+% Internal parameters:
+% fstring: plot filename
+% tstring: plot title
+% x: x-coordinates of data points
 
-% Then plot the result:
+% Set up the figure.
 figure;
 hold on;
 
+% h1 is one run, h2 is average, h3 is intersection (feasible).
 h1 = plot(plotset(:,4), plotset(:,1), '-', 'Color', 'k', 'MarkerEdgeColor', 'k', ...
     'MarkerFaceColor', 'none', 'LineWidth', 1.2, 'MarkerSize', 6);
 h2 = plot(plotset(:,4), plotset(:,2), '-', 'Color', 'r', 'MarkerEdgeColor', 'r', ...
@@ -656,6 +696,7 @@ end
 %               If you have SPRINTF, then use \\ everywhere.
 tstring = append(fstring,sprintf(' vs. bandwidth, $\\omega_{\\rm w}=%d$ Hz, ',omegaw));
 tstring = append(tstring,sprintf('$n=%d$, %d runs',n,maxrun));
+% This interpreter seems to have be done separately.
 title(tstring, 'Interpreter', 'latex');
 ylabel(fstring);
 
@@ -663,17 +704,25 @@ xlabel('Bandwidth $\omega_{\rm a}$ (Hz)');
 xlim([512 1024]);
 % ylim([0 n]);
 
-% % Create legend labels "Analog cutoff = 512*column number" (use LaTeX)
-% labels = arrayfun(@(c) sprintf('Analog cutoff $\omega_{\rm a}$ = %d$ Hz', 512*c), 1:2, 'UniformOutput', false);
-% legend([h1 h2], labels, 'Location', 'best');
-grid on;
+% % Create legend labels
 legend([h1 h2 h3], {'One Run', 'Average', 'Intersection'},'Location', 'northwest');
 
+% Put on a grid for better interpretation.
+grid on;
+
+% Close figure out.
 hold off;
+
+% Create filename for PDF file.  Use abs since snr<0.
+fstring = sprintf('f%dvband.pdf',abs(snr));
+% % Save figure to Matlab format so it can be easily edited later.
+% savefig(fstring);
+% Export to a PDF file.
+exportgraphics(gcf,fstring);
 
 end
 
-function faithful = getfaithful(n,omegaw,fmax,snr)
+function faithful = getfaithful(h,omegaw,fmax,snr)
 % This function calculates the faithful set of Walsh matrix rows given a
 % signal-noise ratio.
 
@@ -682,7 +731,7 @@ function faithful = getfaithful(n,omegaw,fmax,snr)
 
 % Input parameters:
 % fmax: desired analog bandwidth (Hz)
-% n: size of Walsh matrix
+% h: Walsh matrix
 % omegaw: word transmission rate.
 % snr: signal-to-noise ratio (dB)
 
@@ -690,10 +739,15 @@ function faithful = getfaithful(n,omegaw,fmax,snr)
 % bestmatch: index of encoding which best matches the received state
 
 % Internal variables:
+% bestvec: the best match for row i
 % DADflag: 1 if using Matlab's converter; 2 if using Adam's
+% i: looping variable
+% n: size of Walsh matrix
 
-% Compute the Walsh matrix of size n.
-h = n*fwht(eye(n));
+n = size(h,2);
+% Set up the size of bestvec.  Note that it has to be 1xn so that the final
+% calculation of faithful is correct.
+bestvec = zeros(1,n);
 
 for i = 1:n
     % See if this can be vectorized!
@@ -710,32 +764,3 @@ end
 faithful = (bestvec == (1:length(bestvec)));
 
 end
-
-% % Plots: show a short segment for clarity
-% Lseg = min(100, n);
-% idx_sym = 1:Lseg;
-% idx_analog = 1:round(L*Lseg);
-%
-% figure;
-
-% subplot(3,1,1);
-% stem(t_sym(idx_sym), x(idx_sym), 'b', 'filled');
-% title('Original Digital Symbols (±1)');
-% xlabel('Time (s)'); ylabel('Amplitude');
-% xlim([t_sym(1) t_sym(Lseg)]); ylim([-1.5 1.5]); grid on;
-%
-% subplot(3,1,2);
-% plot(t_analog(1:idx_analog(end)), analog(1:idx_analog(end)), 'k-');
-% hold on;
-% stairs(t_sym(idx_sym), x(idx_sym), 'b--','LineWidth',1);
-% title('Analog Waveform (bandlimited interpolation) and Original Symbols');
-% xlabel('Time (s)'); ylabel('Amplitude');
-% xlim([t_sym(1) t_sym(Lseg)]); ylim([-1.5 1.5]); legend('Analog','Symbols'); grid on;
-%
-% subplot(3,1,3);
-% stem(t_sym(idx_sym), x_rec(idx_sym), 'r', 'filled');
-% hold on;
-% stem(t_sym(idx_sym), x(idx_sym), 'b','filled');
-% title('Recovered Digital Symbols vs Original (short segment)');
-% xlabel('Time (s)'); ylabel('Amplitude');
-% xlim([t_sym(1) t_sym(Lseg)]); ylim([-1.5 1.5]); legend('Recovered','Original'); grid on;
