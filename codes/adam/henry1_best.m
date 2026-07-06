@@ -1,11 +1,8 @@
-function sets = henry1_best(faithful,w,options)
-% k-means clustering for selecting a subset of chips from a given set
-% Input
-% M - matrix of faithful from Walsh Hadamard matrix
-% snum - cardinality of set (i.e. number of clusters => k=snum
-% kdim - dimension of embedding
-% Output
-% sets -
+function return_data = henry1_best(faithful,w,options)
+% HENRY1_BEST is a wrapper for applying Henry's algorithm for selecting an
+% optimal codebook from a given set of faithful encodings.
+%
+%last updated 06/28/2026 by Adam Petrucci
 arguments (Input)
     faithful                  % 
     w                         %
@@ -15,32 +12,13 @@ arguments (Input)
     options.n = 9             %
 end
 
-Wn = HadtoW(options.n);
-M = Wn(faithful,:);
-snum = 2^w;
-kdim = options.kdim;
+    Wn = HadtoW(options.n);
+    M = Wn(faithful,:);
+    snum = 2^w;
+    kdim = options.kdim;
 
-[~, rsize]=size(M); % number of rows of the matrix
-if kdim > rsize
-    disp('size of lower-dimension has to be less than the length of a row of the input matrix')
-    return;
+    henry_res = henry_best(M,faithful,snum,kdim,1);
+
+    return_data = sort(faithful(henry_res));
+
 end
-
-lind=(1:1:rsize)';
-M = M*randn(rsize,kdim)/sqrt(kdim); % "lower-dimensional" Gaussian embedding
-%opts=statset('Display','final');
-% Define the number of clusters and perform k-means clustering
-%[idx, centroids] = kmeans(M, snum,Distance="sqeuclidean",Replicates=kdim,Options=opts);
-[idx, centroids] = kmeans(M, snum,Distance="sqeuclidean",Replicates=kdim);
-% Extract the subset of chips based on cluster indices
-sets = zeros(snum,1);
-for i = 1:snum
-    ii = lind(idx==i);
-    % In cluster i, find the element closest to the centroid
-    [~,mm]=min(vecnorm(M(ii,:)-centroids(i,:),2,2)); 
-    sets(i)=ii(mm);
-end
-
-sets = sort(faithful(sets));
-
-

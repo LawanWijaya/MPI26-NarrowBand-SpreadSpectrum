@@ -1,4 +1,9 @@
 function selectedIdx = lawan5_best(faithfulIdx, w)
+% LAWAN5_BEST generates a codebook from given a given feasible set.
+% Everything below this comment block was emailed to Adam from Lawan on
+% 6/17/26 and has not been modified.
+%
+%last updated 06/28/2026 by Adam Petrucci
 
 K = 2^w;
 
