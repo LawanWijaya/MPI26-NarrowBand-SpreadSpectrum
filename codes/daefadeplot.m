@@ -7,7 +7,7 @@ under fading conditions.
 This code uses the Signal Processing Toolbox, 
 Communication Toolbox and the Curve Fitting Toolbox.
 
-Last modified by David A. Edwards on 6/25/26.
+Last modified by David A. Edwards on 8/24/26.
 
 %}
 
@@ -36,11 +36,8 @@ omegaw = 10; % Word transmission rate.
 omegawmax = 64; % Maximum word transmission rate.
 % These are the probabilities from the paper, which I don't think is
 % dealing with underwater applications:
-% pc = 0.9449;  % probability of staying correct
-% pe  = 0.8509;  % probability of propagating error
-% These are the values we used for our plots:
-pc = 0.99;  % probability of staying correct
-pe  = 0.99;  % probability of propagating error
+% pc: probability of staying correct
+% pe: probability of propagating error
 w = 4; % Word length
 
 % Variables
@@ -79,6 +76,12 @@ esize = 2^w;
 
 % Now do the computation for the probability map.
 probmat = linspace(0.8,1,20);
+
+% FOR THE FIRST HEAT MAPS ONLY, we use the probabilities from the paper,
+% % which I don't think is
+% dealing with underwater applications:
+pc = 0.9913;  % probability of staying correct
+pe  = 0.8509;  % probability of propagating error
 
 % Set the size of the signal-to-noise ratio.  (For now, chosen as one
 % value, though a loop could be set up.
@@ -161,6 +164,10 @@ for snr = -3:-6:-9
     end
 
 end
+
+% Then for the probability plots, we use these values:
+pc = 0.99;  % probability of staying correct
+pe  = 0.99;  % probability of propagating error
 
 % Probability plots.  It might seem better to combine in a single loop over
 % SNR, but the two series have slightly different lengths, so we do them in
@@ -540,8 +547,8 @@ h.CellLabelFormat = '%.2g';    % format the numbers shown in cells
 % If you want custom labels (e.g. formatted strings):
 h.XDisplayLabels = compose('%.2f', probmat);   % cell/string array of labels (c elements)
 h.YDisplayLabels = compose('%.2f', probmat);   % cell/string array of labels (c elements)
-h.XLabel = '$P_{\rm c}$';
-h.YLabel = '$P_{\rm e}$';
+h.XLabel = '${\rm Pr}_{\rm c}$';
+h.YLabel = '${\rm Pr}_{\rm e}$';
 % IMPORTANT: If you have a STRING, use typical LaTEX notation.
 %               If you have SPRINTF, then use \\ everywhere.
 line1 = append(line1,sprintf(', $n=%d$, $\\omega_{\\rm a}=%d$ Hz', n,n));
@@ -618,7 +625,7 @@ h.YDisplayLabels = labels;
 %               If you have SPRINTF, then use \\ everywhere.
 line1 = append(line1,sprintf(', $n=%d$, $\\omega_{\\rm a}=%d$ Hz', n,n));
 line2 = sprintf('$\\omega_{\\rm w}=%d$ Hz, %d AWGN runs, %d fade runs, $r=%d$', omegaw, maxrun, faderun, snr);
-line2 = append(line2,sprintf(', $P_{\\rm c}=%.4f$, $P_{\\rm e}=%.4f$',pc,pe));
+line2 = append(line2,sprintf(', ${\\rm Pr}_{\\rm c}=%.4f$, ${\\rm Pr}_{\\rm e}=%.4f$',pc,pe));
 
 
 % Put each line in a cell array so title creates multiple lines
@@ -823,7 +830,7 @@ ylabel('Probability correct');
 % Start the plot title.
 line1 = 'Probability correct {\it vs}. ';
 line2 = sprintf('%d AWGN runs, %d fade runs, $r=%d$', maxrun, faderun, snr);
-line2 = append(line2,sprintf(', $P_{\\rm c}=%.4f$, $P_{\\rm e}=%.4f$',pc,pe));
+line2 = append(line2,sprintf(', ${\\rm Pr}_{\\rm c}=%.4f$, ${\\rm Pr}_{\\rm e}=%.4f$',pc,pe));
 % Start filename for PDF file.  Use abs since snr<0.
 fstring = sprintf('p%dv',abs(snr));
 
