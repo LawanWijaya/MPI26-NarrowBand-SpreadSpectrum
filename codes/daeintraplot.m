@@ -318,10 +318,11 @@ if Wn < 1
     analog = filtfilt(b,a,double(analog));
 end
 
-% Add white noise with SNR level snr.
+% Add white noise with SNR level snr.  IMPORTANT: awgn returns the noisy
+% signal, so you don't need to add the noise.
 % For reproducible noise samples (specify RNG seed)
 % rng(0);                              % set seed
-analog = analog + awgn(analog, snr, 'measured', 'db');
+analog = awgn(analog, snr, 'measured', 'db');
 
 % Recover digital by sampling analog at symbol instants (nearest indices)
 L = fs_analog / fs_sym;        % integer upsample factor (should be integer)
@@ -404,11 +405,11 @@ grid on;
 hold off;
 
 % Finish filename for PDF file.  Use abs since snr<0.
-fstring = append(fstring,sprintf('%d.pdf',abs(snr)));
-% % Save figure to Matlab format so it can be easily edited later.
-% savefig(fstring);
+fstring = append(fstring,sprintf('%d',abs(snr)));
+% Save figure to Matlab format so it can be easily edited later.
+savefig(gcf,fstring);
 % Export to a PDF file.
-exportgraphics(gcf,fstring);
+exportgraphics(gcf,append(fstring,".pdf"));
 
 end
 
