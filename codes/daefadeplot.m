@@ -7,7 +7,7 @@ under fading conditions.
 This code uses the Signal Processing Toolbox, 
 Communication Toolbox and the Curve Fitting Toolbox.
 
-Last modified by David A. Edwards on 8/24/26.
+Last modified by David A. Edwards on 8/26/26.
 
 %}
 
@@ -559,12 +559,10 @@ line2 = sprintf('$\\omega_{\\rm w}=%d$ Hz, %d AWGN runs, %d fade runs, $r=%d$', 
 % Put each line in a cell array so title creates multiple lines
 h.Title = {line1; line2};
 
-% Finish filename for PDF file.
-fstring = append(fstring,'.pdf');
-% % Save figure to Matlab format so it can be easily edited later.
-% savefig(fstring);
+% Save figure to Matlab format so it can be easily edited later.
+savefig(gcf,fstring);
 % Export to a PDF file.
-exportgraphics(gcf,fstring);
+exportgraphics(gcf,append(fstring,".pdf"));
 
 end
 
@@ -632,12 +630,10 @@ line2 = append(line2,sprintf(', ${\\rm Pr}_{\\rm c}=%.4f$, ${\\rm Pr}_{\\rm e}=%
 h.Title = {line1; line2};
 h.Interpreter = 'latex';
 
-% Finish filename for PDF file.
-fstring = append(fstring,'.pdf');
-% % Save figure to Matlab format so it can be easily edited later.
-% savefig(fstring);
+% Save figure to Matlab format so it can be easily edited later.
+savefig(gcf,fstring);
 % Export to a PDF file.
-exportgraphics(gcf,fstring);
+exportgraphics(gcf,append(fstring,".pdf"));
 
 end
 
@@ -680,10 +676,11 @@ if Wn < 1
     analog = filtfilt(b,a,double(analog));
 end
 
-% Add white noise with SNR level snr.
+% Add white noise with SNR level snr.  IMPORTANT: awgn returns the noisy
+% signal, so you don't need to add the noise.
 % For reproducible noise samples (specify RNG seed)
 % rng(0);                              % set seed
-analog = analog + awgn(analog, snr, 'measured', 'db');
+analog = awgn(analog, snr, 'measured', 'db');
 
 % Recover digital by sampling analog at symbol instants (nearest indices)
 L = fs_analog / fs_sym;        % integer upsample factor (should be integer)
@@ -862,12 +859,10 @@ grid on;
 % Close figure out.
 hold off;
 
-% Finish filename for PDF file.
-fstring = append(fstring,'.pdf');
-% % Save figure to Matlab format so it can be easily edited later.
-% savefig(fstring);
+% Save figure to Matlab format so it can be easily edited later.
+savefig(gcf,fstring);
 % Export to a PDF file.
-exportgraphics(gcf,fstring);
+exportgraphics(gcf,append(fstring,".pdf"));
 
 end
 
