@@ -7,7 +7,7 @@ plots for the paper.  It does not select codebooks.
 This code uses the Signal Processing Toolbox, 
 Communication Toolbox and the Curve Fitting Toolbox.
 
-Last modified by David A. Edwards on 6/24/26.
+Last modified by David A. Edwards on 8/26/26.
 
 %}
 
@@ -373,10 +373,11 @@ if Wn < 1
     analog = filtfilt(b,a,double(analog));
 end
 
-% Add white noise with SNR level snr.
+% Add white noise with SNR level snr.  IMPORTANT: awgn returns the noisy
+% signal, so you don't need to add the noise.
 % For reproducible noise samples (specify RNG seed)
 % rng(0);                              % set seed
-analog = analog + awgn(analog, snr, 'measured', 'db');
+analog = awgn(analog, snr, 'measured', 'db');
 
 % Recover digital by sampling analog at symbol instants (nearest indices)
 L = fs_analog / fs_sym;        % integer upsample factor (should be integer)
@@ -488,11 +489,11 @@ grid on;
 hold off;
 
 % Create filename for PDF file.
-fstring = 'fvratefit.pdf';
+fstring = 'fvratefit';
 % % Save figure to Matlab format so it can be easily edited later.
-% savefig(fstring);
+savefig(gcf,fstring);
 % Export to a PDF file.
-exportgraphics(gcf,fstring);
+exportgraphics(gcf,append(fstring,".pdf"));
 
 end
 
@@ -547,7 +548,7 @@ ylabel(fstring);
 % Labels, limits, legend
 xlabel('Word rate $\omega_{\rm w}$ (Hz)');
 xlim([1 length(plotset)]);
-ylim([3 log(n)]);
+ylim([2 log(n)]);
 legend([h1 h2 h3], {'One Run', 'Average', 'Intersection'});
 
 % Put on a grid for better interpretation.
@@ -557,11 +558,11 @@ grid on;
 hold off;
 
 % Create filename for PDF file.  Use abs since snr<0.
-fstring = sprintf('f%dvrate.pdf',abs(snr));
+fstring = sprintf('f%dvrate',abs(snr));
 % % Save figure to Matlab format so it can be easily edited later.
-% savefig(fstring);
+savefig(gcf,fstring);
 % Export to a PDF file.
-exportgraphics(gcf,fstring);
+exportgraphics(gcf,append(fstring,".pdf"));
 
 end
 
@@ -647,11 +648,11 @@ grid on;
 hold off;
 
 % Create filename for PDF file.
-fstring = 'fvratefit.pdf'
+fstring = 'fvbandfit';
 % % Save figure to Matlab format so it can be easily edited later.
-% savefig(fstring);
+savefig(gcf,fstring);
 % Export to PDF file.
-exportgraphics(gcf, 'fvbandfit.pdf');
+exportgraphics(gcf,append(fstring,".pdf"));
 
 end
 
@@ -714,11 +715,11 @@ grid on;
 hold off;
 
 % Create filename for PDF file.  Use abs since snr<0.
-fstring = sprintf('f%dvband.pdf',abs(snr));
+fstring = sprintf('f%dvband',abs(snr));
 % % Save figure to Matlab format so it can be easily edited later.
-% savefig(fstring);
+savefig(gcf,fstring);
 % Export to a PDF file.
-exportgraphics(gcf,fstring);
+exportgraphics(gcf,append(fstring,".pdf"));
 
 end
 
