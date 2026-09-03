@@ -1,9 +1,10 @@
 function greedy = david_best(feasible,w)
 % DAVID_BEST generates a codebook from given a given feasible set using two
 % different algorithms. Everything below this comment block was taken
-% directly from David's Github branch on 6/28/26 and has not been modified.
+% directly from David's Github branch on 9/03/26 and has not been
+% modified.
 %
-%last updated 06/28/2026 by Adam Petrucci
+%last updated 09/03/2026 by Adam Petrucci
 
 % This function computes the codeset using two different greedy algorithms.
 

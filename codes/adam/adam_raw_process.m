@@ -17,7 +17,10 @@ faithful_set = find(faithful_fine);
 
 % Collection algorithms to test
 algos = {@lawan5_best @david1_best @david2_best @henry1_best};
-algo_titles = ["Lawan" "David1" "David2" "Henry"];
+algo_titles = ["Binary Search Algorithm",...
+               "Greedy Algorithm 1",...
+               "Greedy Algorithm 2",...
+               '$k$-means Clustering'];
 
 % Instantiate figure for visualization
 algo_comparison = figure(6);
@@ -71,7 +74,8 @@ for k = 1:4
     plot(ax(k),x,minbs,'r-o','LineWidth',2)
 
     % Title current algorithm
-    title(ax(k),sprintf("Codebooks by %s",algo_titles(k)))
+    title(ax(k),sprintf(algo_titles(k)),...
+                        'Interpreter', 'latex')
 
 end
 
